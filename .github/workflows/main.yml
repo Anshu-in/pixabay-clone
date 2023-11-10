@@ -1,4 +1,4 @@
-name: Publish Docker image
+name: Build, Push, and Deploy
 
 on:
   release:
@@ -6,25 +6,24 @@ on:
   workflow_dispatch:  # Enable manual triggering
 
 jobs:
-  push_to_registry:
-    name: anshusharma17
+  build_and_push:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v4
-      
+        uses: actions/checkout@v2
+
       - name: Log in to Docker Hub
         uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
         with:
           username: anshusharma17
-          password: dckr_pat_2k-ZHPSUAmWSmAr_T5JEd2UPaAI  # Use your Docker Hub token stored as a secret
-      
+          password: dckr_pat_2k-ZHPSUAmWSmAr_T5JEd2UPaAI
+
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
         with:
-          images: anshusharma17/react-template-demo-1
-      
+          images: anshusharma17/realstatecrm_client
+
       - name: Build and push Docker image
         uses: docker/build-push-action@3b5e8027fcad23fda98b2e3ac259d8d67585f671
         with:
@@ -33,21 +32,24 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-  deploy_to_azure:
+  deploy:
+    permissions:
+      contents: none
     runs-on: ubuntu-latest
-    needs: build_and_push
-    steps:
-      - name: Check out the repo
-        uses: actions/checkout@v2
+    needs: build
+    environment:
+      name: 'Development' 
 
-      - name: Azure Login
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+    steps:
+      - name: Lowercase the repo name and username
+        run: echo "REPO=${GITHUB_REPOSITORY,,}" >>${GITHUB_ENV}
 
       - name: Deploy to Azure Web App
+        id: deploy-to-webapp
         uses: azure/webapps-deploy@v2
         with:
-          app-name: 'your-azure-web-app-name'  # Replace with your Azure Web App name
-          package: '.'  # Path to your application code          
+          app-name: rs-crm-client
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          images: 'anshusharma17/react-template-demo-1'
           
+  
